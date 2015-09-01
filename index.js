@@ -18,6 +18,27 @@ var mergeTrees = require('broccoli-merge-trees')
 // var concat = require('broccoli-concat')
 // var morecss = require('broccoli-more-css')
 
+var helper = {};
+helper.getAnnotations = function(content, tag) {
+  var ret = []
+  var found = content.split('@' + tag).forEach(function(v, i) {
+    if (i == 0) {
+      return
+    }
+    v = v.trim()
+    if (v.substr(0,1) == '"') {
+      // @todo Add support for escape chars
+      v = v.split('"').shift();
+    }
+    else {
+      v = v.split(/\s/).shift()
+    }
+    ret.push(v)
+  });
+
+  return ret
+};
+
 // Init the steamer namespace.
 var steamer = {
   "sourceTrees" : [],
@@ -126,15 +147,8 @@ steamer.img.copy = function (inputFolder, outputFolder) {
  */
 steamer.js.compile = function(inputFile, outputFile) {
   var content = fs.readFileSync(inputFile) + ""
-  var prepends = []
-  var found = content.split('@steamer.prepend').forEach(function(v, i) {
-    if (i == 0) {
-      return
-    }
-    prepends.push(v.trim().split(/\s/).shift())
-  });
+  var prepends = helper.getAnnotations(content, 'steamer.prepend');
   prepends.push(inputFile)
-  console.log(prepends)
   return steamer.js.combine(prepends, outputFile)
 }
 
