@@ -121,7 +121,25 @@ steamer.img.copy = function (inputFolder, outputFolder) {
 };
 
 /**
- * Combine multiple JS fiels into a single output file.
+ * Compile a single JS file.
+ * Supports @steamer.prepend
+ */
+steamer.js.compile = function(inputFile, outputFile) {
+  var content = fs.readFileSync(inputFile) + ""
+  var prepends = []
+  var found = content.split('@steamer.prepend').forEach(function(v, i) {
+    if (i == 0) {
+      return
+    }
+    prepends.push(v.trim().split(/\s/).shift())
+  });
+  prepends.push(inputFile)
+  console.log(prepends)
+  return steamer.js.combine(prepends, outputFile)
+}
+
+/**
+ * Combine multiple JS files into a single output file.
  */
 steamer.js.combine = function (inputFiles, outputFile) {
   if (typeof inputFiles == 'string') {
@@ -183,6 +201,6 @@ steamer.js.combine = function (inputFiles, outputFile) {
    }
   })
   
-  steamer.trees.push(js);
+  steamer.trees.push(js)
   return this
 }
