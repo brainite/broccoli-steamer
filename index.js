@@ -35,24 +35,60 @@ var mergeTrees = require('broccoli-merge-trees')
 // var morecss = require('broccoli-more-css')
 
 var helper = {};
-helper.getAnnotations = function(content, tag) {
+helper.getAnnotations = function(content, tag, mode, tgt) {
+  mode = mode || "default"
+  
+  // Extract a value from the front of the string.
+  function getValue(v) {
+    v = v.trim()
+    if (v.charAt(0) == '"') {
+      v = v.match(/^"((?:\\"|.)*?)"/)[0]
+      v = JSON.parse(v)
+    }
+    else {
+      v = v.split(/[\s;]/).shift()
+      if (!/^[a-zA-Z]/.test(v) || /^(true|false)$/.test(v)) {
+        v = JSON.parse(v)
+      }
+    }
+    return v
+  }
+  
   var ret = []
-  var found = content.split('@' + tag).forEach(function(v, i) {
+  var found = content.split('@' + tag + ' ').forEach(function(v, i) {
     if (i == 0) {
       return
     }
-    v = v.trim()
-    if (v.substr(0,1) == '"') {
-      // @todo Add support for escape chars
-      v = v.split('"').shift();
+    switch (mode) {
+    case 'assign':
+      var tmp = v.split('=', 2)
+      i = tmp[0].trim()
+      v = getValue(tmp[1])
+      ret[i] = v
+      if (typeof tgt == 'object') {
+        tgt[i] = v
+      }
+      break
+    case 'default':
+    default:
+      v = getValue(v)
+      ret.push(v)
+      break
     }
-    else {
-      v = v.split(/\s/).shift()
-    }
-    ret.push(v)
   });
 
   return ret
+};
+helper.readFileForgiving = function(path) {
+  try {
+    var data = fs.readFileSync(path) + ""
+    return data
+  } catch (err) {
+    if (err.message.indexOf('ENOENT') == -1) {
+      console.log("  ERROR: " + err.message);
+    }
+  }
+  return ""
 };
 
 steamer.steam = function() {
@@ -148,11 +184,98 @@ steamer.img.copy = function (inputFolder, outputFolder) {
  * Compile a single JS file.
  * Supports @steamer.prepend
  */
-steamer.js.compile = function(inputFile, outputFile) {
+steamer.js.compile = function(inputFile, outputFile, options) {
+  options = options || {}
+  
+  // Process any prepends
   var content = fs.readFileSync(inputFile) + ""
   var prepends = helper.getAnnotations(content, 'steamer.prepend');
   prepends.push(inputFile)
-  return steamer.js.combine(prepends, outputFile)
+  steamer.js.combine(prepends, outputFile)
+  
+  // Create the tree.
+  var js = null;
+  
+  //Combine JS
+  //https://github.com/joliss/broccoli-es6-concatenator
+  js = compileES6(steamer.sourceTrees, {
+     ignoredModules: [],
+     inputFiles: [],
+     legacyFilesToAppend: prepends,
+     wrapInEval: false,
+     outputFile: outputFile
+  })
+  
+  // Extract the definitions
+  var defs = {
+    DEBUG : (env == "development")
+  };
+  prepends.forEach(function(path){
+    helper.getAnnotations(helper.readFileForgiving(path), 'define', 'assign', defs)
+  });
+  console.log(outputFile + " constants = " + JSON.stringify(defs));
+  
+  // Process the concatenated output.
+  postprocessor.prototype = Object.create(steamer.broccoli.Filter.prototype)
+  postprocessor.prototype.constructor = postprocessor
+  function postprocessor(inputTree, options) {
+    if (!(this instanceof postprocessor)) return new postprocessor(inputTree, options)
+    steamer.broccoli.Filter.call(this, inputTree, options)
+    this.options = options || {}
+  }
+  postprocessor.prototype.extensions = ['js']
+  postprocessor.prototype.targetExtension = 'js'
+  postprocessor.prototype.processString = function (content, relativePath) {
+    result = content
+    var matches, remove;
+    var cont = true
+    while (cont) {
+      cont = false
+      // Float headers to the top
+      matches = result.match(/,?steamer.header\(\s*([\"'])((?:\\\1|.)*?)\1\s*\),?/)
+      if (matches) {
+        remove = matches[0]
+        if (remove.charAt(0) == remove.substr(-1) && remove.charAt(0) == ',') {
+          remove = remove.substr(1)
+        }
+        result = matches[2] + result.replace(remove, "")
+        cont = true
+      }
+      // Sink footers to the bottom
+      matches = result.match(/,?steamer.footer\(\s*([\"'])((?:\\\1|.)*?)\1\s*\),?/)
+      if (matches) {
+        remove = matches[0]
+        if (remove.charAt(0) == remove.substr(-1) && remove.charAt(0) == ',') {
+          remove = remove.substr(1)
+        }
+        result = result.replace(remove, "") + matches[2]
+        cont = true
+      }
+    }
+    return result
+  }
+  
+  // Apply the custom logic.
+  js = postprocessor(js, options)
+  
+  // Uglify/minify the JS
+  js = uglifyJavaScript(js, {
+    mangle: true,
+    compress: {
+      // http://lisperator.net/uglifyjs/compress
+      // "hoist_funs": false, // 2015-02-17: This configuration caused a 'strict' error in Firefox
+      "loops": false,
+      "unused": false,
+      "global_defs":defs
+    },
+    output: {
+      // http://lisperator.net/uglifyjs/codegen
+      "ascii_only": true
+    }
+  })
+   
+  steamer.trees.push(js)
+  return this
 }
 
 /**
@@ -163,25 +286,12 @@ steamer.js.combine = function (inputFiles, outputFile) {
     inputFiles = [inputFiles]
   }
   
+  // Extract definitions from all JS files.
   var defs = {
     DEBUG : (env == "development")
   };
   inputFiles.forEach(function(inputFile){
-    try {
-      var data = fs.readFileSync(inputFile) + "";
-      console.log(inputFile + ", length: "  + data.length);
-      data.split('@define ').forEach(function(c, i) {
-        if (!i) return;
-        var found = c.match(/^([^= ]*) = ([^;]*);/);
-        if (typeof found == 'object') {
-          defs[found[1]] = JSON.parse(found[2]);
-        }
-      });
-    } catch (err) {
-      if (err.message.indexOf('ENOENT') == -1) {
-        console.log("  ERROR: " + err.message);
-      }
-    }
+    helper.getAnnotations(helper.readFileForgiving(inputFile), 'define', 'assign', defs)
   });
   console.log(outputFile + " constants = " + JSON.stringify(defs));
   
