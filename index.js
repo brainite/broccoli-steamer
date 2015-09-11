@@ -1,12 +1,28 @@
 var path = require('path')
 var fs = require('fs')
 var mkdirp = require('mkdirp')
-var CachingWriter = require('broccoli-caching-writer')
-var Filter = require('broccoli-filter')
+
+// Init the steamer namespace.
+var steamer = {
+  "broccoli" : {},
+  "sourceTrees" : [],
+  "trees" : [],
+  "init" : {},
+  "dir" : {},
+  "css" : {},
+  "img" : {},
+  "js" : {},
+  "steam" : null
+};
+module.exports = steamer
+
+// Require other broccoli modules
+steamer.broccoli.sass = require('broccoli-sass')
+steamer.broccoli.imagemin = require('broccoli-imagemin')
+steamer.broccoli.CachingWriter = require('broccoli-caching-writer')
+steamer.broccoli.Filter = require('broccoli-filter')
 var pickFiles = require('broccoli-static-compiler')
 var findBowerTrees = require('broccoli-bower')
-var imageMin = require('broccoli-imagemin')
-var compileSass = require('broccoli-sass')
 var cleancss = require('broccoli-clean-css')
 var base64CSS = require('broccoli-base64-css');
 var uglifyJavaScript = require('broccoli-uglify-js')
@@ -38,19 +54,6 @@ helper.getAnnotations = function(content, tag) {
 
   return ret
 };
-
-// Init the steamer namespace.
-var steamer = {
-  "sourceTrees" : [],
-  "trees" : [],
-  "init" : {},
-  "dir" : {},
-  "css" : {},
-  "img" : {},
-  "js" : {},
-  "steam" : null
-};
-module.exports = steamer
 
 steamer.steam = function() {
   return mergeTrees(steamer.trees, { overwrite: true })
@@ -94,7 +97,7 @@ steamer.css.sass = function(inputFile, outputFile) {
   var ALLOW_SOURCEMAPS = false
   //Also supports imagePath, precision
   //https://github.com/joliss/broccoli-sass
-  var css = compileSass([steamer.sourceTrees], inputFile, outputFile, {
+  var css = steamer.broccoli.sass([steamer.sourceTrees], inputFile, outputFile, {
     "sourceComments":false,
     "outputStyle":"compressed",
     "sourceMap":(ALLOW_SOURCEMAPS && env != 'production')
@@ -136,7 +139,7 @@ steamer.img.copy = function (inputFolder, outputFolder) {
     srcDir: '/',
     destDir: outputFolder
   })
-  imageTree = imageMin(imageTree, image_options)
+  imageTree = steamer.broccoli.imagemin(imageTree, image_options)
   steamer.trees.push(imageTree)
   return this
 };
