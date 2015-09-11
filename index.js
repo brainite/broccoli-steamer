@@ -16,40 +16,93 @@ var steamer = {
 };
 module.exports = steamer
 
-// Require other broccoli modules
-steamer.broccoli.sass = require('broccoli-sass')
+// External Broccoli modules: used
+steamer.broccoli.base64Css = require('broccoli-base64-css')
+steamer.broccoli.bower = require('broccoli-bower')
+steamer.broccoli.cleanCss = require('broccoli-clean-css')
+steamer.broccoli.env = require('broccoli-env').getEnv()
+steamer.broccoli.es6Concatenator = require('broccoli-es6-concatenator')
+steamer.broccoli.filter = require('broccoli-filter')
 steamer.broccoli.imagemin = require('broccoli-imagemin')
-steamer.broccoli.CachingWriter = require('broccoli-caching-writer')
-steamer.broccoli.Filter = require('broccoli-filter')
-var pickFiles = require('broccoli-static-compiler')
-var findBowerTrees = require('broccoli-bower')
-var cleancss = require('broccoli-clean-css')
-var base64CSS = require('broccoli-base64-css');
-var uglifyJavaScript = require('broccoli-uglify-js')
-var compileES6 = require('broccoli-es6-concatenator')
-var env = require('broccoli-env').getEnv()
-var mergeTrees = require('broccoli-merge-trees')
+steamer.broccoli.mergeTrees = require('broccoli-merge-trees')
+steamer.broccoli.sass = require('broccoli-sass')
+steamer.broccoli.staticCompiler = require('broccoli-static-compiler')
+steamer.broccoli.uglifyJs = require('broccoli-uglify-js')
 
-// UNUSED projects
-// var concat = require('broccoli-concat')
-// var morecss = require('broccoli-more-css')
+// External Broccoli modules: unused
+steamer.broccoli.cachingWriter = require('broccoli-caching-writer')
+steamer.broccoli.concat = require('broccoli-concat')
+steamer.broccoli.moreCss = require('broccoli-more-css')
 
-var helper = {};
+var helper = {}
 helper.getAnnotations = function(content, tag, mode, tgt) {
   mode = mode || "default"
   
   // Extract a value from the front of the string.
-  function getValue(v) {
-    v = v.trim()
+  function getValue(orig) {
+    var v = orig.trimLeft()
+    var m, rest = v
     if (v.charAt(0) == '"') {
       v = v.match(/^"((?:\\"|.)*?)"/)[0]
-      v = JSON.parse(v)
+      rest = rest.substr(v.length)
+    }
+    else if (v.charAt(0) == '{') {
+      rest = v.substr(1).trimLeft()
+      v = '{'
+      while (true) {
+        m = rest.charAt(0)
+        if ("}" == m) {
+          v = v + "}"
+          rest = rest.substr(1)
+          break
+        }
+        else if (",:".contains(m)) {
+          v = v + m
+          rest = rest.substr(1).trimLeft()
+        }
+        else {
+          m = getValue(rest)
+          v = v + m.value
+          rest = rest.substr(m.length).trimLeft()
+        }
+      }
+    }
+    else if (v.charAt(0) == '[') {
+      rest = v.substr(1).trimLeft()
+      v = '['
+      while (true) {
+        m = rest.charAt(0)
+        if ("]" == m) {
+          v = v + "]"
+          rest = rest.substr(1)
+          break
+        }
+        else if (",".contains(m)) {
+          v = v + m
+          rest = rest.substr(1).trimLeft()
+        }
+        else {
+          m = getValue(rest)
+          v = v + m.value
+          rest = rest.substr(m.length).trimLeft()
+        }
+      }
     }
     else {
-      v = v.split(/[\s;]/).shift()
-      if (!/^[a-zA-Z]/.test(v) || /^(true|false)$/.test(v)) {
-        v = JSON.parse(v)
-      }
+      v = v.split(/[\s;,]/).shift()
+      rest = rest.substr(v.length)
+    }
+    
+    return {
+      "value" : v,
+      "length" : (orig.length - rest.length)
+    };
+  }
+  
+  function getValueParsed(v) {
+    v = getValue(v).value
+    if (!/^[a-zA-Z]/.test(v) || /^(true|false)$/.test(v)) {
+      v = JSON.parse(v)
     }
     return v
   }
@@ -63,7 +116,7 @@ helper.getAnnotations = function(content, tag, mode, tgt) {
     case 'assign':
       var tmp = v.split('=', 2)
       i = tmp[0].trim()
-      v = getValue(tmp[1])
+      v = getValueParsed(tmp[1])
       ret[i] = v
       if (typeof tgt == 'object') {
         tgt[i] = v
@@ -71,7 +124,7 @@ helper.getAnnotations = function(content, tag, mode, tgt) {
       break
     case 'default':
     default:
-      v = getValue(v)
+      v = getValueParsed(v)
       ret.push(v)
       break
     }
@@ -92,15 +145,15 @@ helper.readFileForgiving = function(path) {
 };
 
 steamer.steam = function() {
-  return mergeTrees(steamer.trees, { overwrite: true })
+  return steamer.broccoli.mergeTrees(steamer.trees, { overwrite: true })
 };
 steamer.init.bower = function() {
-  steamer.sourceTrees = steamer.sourceTrees.concat(findBowerTrees())
+  steamer.sourceTrees = steamer.sourceTrees.concat(steamer.broccoli.bower())
   return this
 };
 steamer.init.dir = function(inputDir, outputDir) {
   steamer.sourceTrees.push(
-    pickFiles(inputDir, {
+    steamer.broccoli.staticCompiler(inputDir, {
       srcDir: '/',
       destDir: outputDir
     })
@@ -112,13 +165,13 @@ steamer.init.path = function(inputDir) {
   return this
 };
 steamer.init.done = function() {
-  steamer.sourceTrees = new mergeTrees(steamer.sourceTrees, { overwrite: true })
+  steamer.sourceTrees = new steamer.broccoli.mergeTrees(steamer.sourceTrees, { overwrite: true })
   return steamer
 };
 
 steamer.dir.copy = function(inputDir, outputDir) {
   steamer.trees.push(
-    pickFiles(inputDir, {
+    steamer.broccoli.staticCompiler(inputDir, {
       srcDir: '/',
       destDir: outputDir
     })
@@ -136,15 +189,15 @@ steamer.css.sass = function(inputFile, outputFile) {
   var css = steamer.broccoli.sass([steamer.sourceTrees], inputFile, outputFile, {
     "sourceComments":false,
     "outputStyle":"compressed",
-    "sourceMap":(ALLOW_SOURCEMAPS && env != 'production')
+    "sourceMap":(ALLOW_SOURCEMAPS && steamer.broccoli.env != 'production')
   })
-  if (!ALLOW_SOURCEMAPS || env != 'production') {
+  if (!ALLOW_SOURCEMAPS || steamer.broccoli.env != 'production') {
     // Minify and process imports.
-    css = cleancss(css, {
+    css = steamer.broccoli.cleanCss(css, {
       "relativeTo":"2015"
     })
     // Convert small images to base64 URLs
-    css = base64CSS(css, {
+    css = steamer.broccoli.base64Css(css, {
       imagePath: '.',
       fontPath: '.',
       maxFileSize: 4096,
@@ -170,7 +223,7 @@ steamer.img.copy = function (inputFolder, outputFolder) {
     progressive: true,
     lossyPNG: false
   };
-  var imageTree = pickFiles(inputFolder, {
+  var imageTree = steamer.broccoli.staticCompiler(inputFolder, {
     //    files: ['**/*'],
     srcDir: '/',
     destDir: outputFolder
@@ -198,7 +251,7 @@ steamer.js.compile = function(inputFile, outputFile, options) {
   
   //Combine JS
   //https://github.com/joliss/broccoli-es6-concatenator
-  js = compileES6(steamer.sourceTrees, {
+  js = steamer.broccoli.es6Concatenator(steamer.sourceTrees, {
      ignoredModules: [],
      inputFiles: [],
      legacyFilesToAppend: prepends,
@@ -208,7 +261,7 @@ steamer.js.compile = function(inputFile, outputFile, options) {
   
   // Extract the definitions
   var defs = {
-    DEBUG : (env == "development")
+    DEBUG : (steamer.broccoli.env == "development")
   };
   prepends.forEach(function(path){
     helper.getAnnotations(helper.readFileForgiving(path), 'define', 'assign', defs)
@@ -216,11 +269,11 @@ steamer.js.compile = function(inputFile, outputFile, options) {
   console.log(outputFile + " constants = " + JSON.stringify(defs));
   
   // Process the concatenated output.
-  postprocessor.prototype = Object.create(steamer.broccoli.Filter.prototype)
+  postprocessor.prototype = Object.create(steamer.broccoli.filter.prototype)
   postprocessor.prototype.constructor = postprocessor
   function postprocessor(inputTree, options) {
     if (!(this instanceof postprocessor)) return new postprocessor(inputTree, options)
-    steamer.broccoli.Filter.call(this, inputTree, options)
+    steamer.broccoli.filter.call(this, inputTree, options)
     this.options = options || {}
   }
   postprocessor.prototype.extensions = ['js']
@@ -259,7 +312,7 @@ steamer.js.compile = function(inputFile, outputFile, options) {
   js = postprocessor(js, options)
   
   // Uglify/minify the JS
-  js = uglifyJavaScript(js, {
+  js = steamer.broccoli.uglifyJs(js, {
     mangle: true,
     compress: {
       // http://lisperator.net/uglifyjs/compress
@@ -288,7 +341,7 @@ steamer.js.combine = function (inputFiles, outputFile) {
   
   // Extract definitions from all JS files.
   var defs = {
-    DEBUG : (env == "development")
+    DEBUG : (steamer.broccoli.env == "development")
   };
   inputFiles.forEach(function(inputFile){
     helper.getAnnotations(helper.readFileForgiving(inputFile), 'define', 'assign', defs)
@@ -300,7 +353,7 @@ steamer.js.combine = function (inputFiles, outputFile) {
   
   //Combine and minimize JS.
   //https://github.com/joliss/broccoli-es6-concatenator
-  js = compileES6(steamer.sourceTrees, {
+  js = steamer.broccoli.es6Concatenator(steamer.sourceTrees, {
      // Prepend contents of loader.js
      // loaderFile: 'loader.js',
      ignoredModules: [
@@ -313,7 +366,7 @@ steamer.js.combine = function (inputFiles, outputFile) {
      wrapInEval: false,
      outputFile: outputFile
   })
-  js = uglifyJavaScript(js, {
+  js = steamer.broccoli.uglifyJs(js, {
    mangle: true,
    compress: {
      // http://lisperator.net/uglifyjs/compress
