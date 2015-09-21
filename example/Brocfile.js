@@ -3,7 +3,7 @@ var steamer = require('broccoli-steamer')
 // Identify the files to watch.
 steamer.init
   .dir("assets", "assets")
-  .bower()
+//  .bower()
   .done()
 
 // Build specific assets.

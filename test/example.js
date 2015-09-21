@@ -15,15 +15,21 @@ function testExample(dir) {
       },
       "Build" : {
         topic: function() {
-          fs.symlinkSync(fs.realpath("node_modules", "dir/node_modules")
-          exec(dir + "/node_modules/broccoli-cli/bin/broccoli build " + dir + "/build", this.callback)
-        },
-        "output" : function(err, stdout, sterr) {
-          console.log('stdout: ' + stdout);
-          console.log('stderr: ' + stderr);
-          if (error !== null) {
-            console.log('exec error: ' + error);
+          if (!fs.statSync(dir + "/node_modules")) {
+            fs.symlinkSync(fs.realpathSync("node_modules"), dir + "/node_modules")
           }
+          var cmd = "cd " + dir + "; rm -rf build; ./node_modules/broccoli-cli/bin/broccoli build build;"
+          
+          // Add some debug output
+          cmd += " find build; "
+          exec(cmd, this.callback)
+        },
+        "output" : function(err, stdout, stderr) {
+          console.log(stdout);
+          // console.log('stderr: ' + stderr);
+          // if (err !== null) {
+          //  console.log('exec error: ' + err);
+          // }
         }
       }
     }
