@@ -1,6 +1,4 @@
-var path = require('path')
 var fs = require('fs')
-var mkdirp = require('mkdirp')
 
 // Init the steamer namespace.
 var steamer = {
