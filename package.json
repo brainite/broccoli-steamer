@@ -4,7 +4,7 @@
     "description":"Collection of broccoli plugins primarily for standalone use.",
     "main":"index.js",
     "scripts":{
-        
+        "test":"vows --spec"
     },
     "repository":{
         "type":"git",
