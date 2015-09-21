@@ -15,7 +15,7 @@ function testExample(dir) {
       },
       "Build" : {
         topic: function() {
-          if (!fs.statSync(dir + "/node_modules")) {
+          if (!fs.accessSync(dir + "/node_modules")) {
             fs.symlinkSync(fs.realpathSync("node_modules"), dir + "/node_modules")
           }
           var cmd = "cd " + dir + "; rm -rf build; ./node_modules/broccoli-cli/bin/broccoli build build;"
