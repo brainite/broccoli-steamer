@@ -17,6 +17,7 @@
     "license":"MIT",
     "dependencies":{
         "broccoli":"^0.10.0",
+        "broccoli-filter":"^1.2.0",
         "broccoli-cli":"^0.0.1",
         "broccoli-more-css":"^0.1.0",
         "broccoli-base64-css":"^0.0.6",

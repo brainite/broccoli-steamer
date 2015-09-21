@@ -14,11 +14,14 @@ function testExample(dir) {
       },
       "Build" : {
         topic: function() {
-          if (!fs.statSync(dir + "/node_modules").isDirectory()) {
+          try {
+            assert.isTrue(fs.statSync(dir + "/node_modules").isDirectory())
+          } catch (e) {
             fs.symlinkSync(fs.realpathSync("node_modules"), dir + "/node_modules")
           }
-          if (!fs.statSync("node_modules/broccoli-steamer").isDirectory()) {
-            console.log("symlink to " + fs.realpathSync("./"))
+          try {
+            assert.isTrue(fs.statSync("node_modules/broccoli-steamer").isDirectory())
+          } catch (e) {
             fs.symlinkSync(fs.realpathSync("./"), "node_modules/broccoli-steamer")
           }
           var cmd = "cd " + dir + "; rm -rf build; mkdir build; ./node_modules/broccoli-cli/bin/broccoli build build;"
