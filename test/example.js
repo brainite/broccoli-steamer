@@ -24,7 +24,7 @@ function testExample(dir) {
           } catch (e) {
             fs.symlinkSync(fs.realpathSync("./"), "node_modules/broccoli-steamer")
           }
-          var cmd = "cd " + dir + "; rm -rf build; mkdir build; ./node_modules/broccoli-cli/bin/broccoli build build;"
+          var cmd = "cd " + dir + "; rm -rf build; ./node_modules/broccoli-cli/bin/broccoli build build;"
           
           // Add some debug output
           cmd += " find build; cd -; "
