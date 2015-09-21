@@ -24,16 +24,20 @@ function testExample(dir) {
           } catch (e) {
             fs.symlinkSync(fs.realpathSync("./"), "node_modules/broccoli-steamer")
           }
-          var cmd = "cd " + dir + "; rm -rf build; ./node_modules/broccoli-cli/bin/broccoli build build;"
-          
-          // Add some debug output
-          cmd += " find build; cd -; "
-            console.log(cmd)
+          var cmd = "cd " + dir + "; rm -rf build; ./node_modules/broccoli-cli/bin/broccoli build build; cd - > /dev/null; "
           exec(cmd, this.callback)
         },
         "output" : function(err, stdout, stderr) {
-          console.log("stderr: " + stderr);
-          console.log("stdout: " + stdout);
+          assert.equal(stderr, "")
+        },
+        "DistDiff" : {
+          topic: function() {
+            var cmd = "cd " + dir + "; diff -r dist build; cd - > /dev/null"
+            exec(cmd, this.callback)
+          },
+          "output" : function(err, stdout, stderr) {
+            assert.equal(stdout.trim(), "")
+          },
         }
       }
     }
