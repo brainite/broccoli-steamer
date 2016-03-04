@@ -178,6 +178,18 @@ steamer.dir.copy = function(inputDir, outputDir) {
   return this
 };
 
+steamer.dir.exists = function(dir) {
+  try {
+    fs.statSync(dir).isDirectory()
+    return true
+  } catch (e) {
+    if (e.code !== 'ENOENT') {
+      throw e
+    }
+    return false
+  }
+};
+
 /**
  * Compile SASS to CSS
  */
