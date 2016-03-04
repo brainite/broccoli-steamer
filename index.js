@@ -8,6 +8,7 @@ var steamer = {
   "init" : {},
   "dir" : {},
   "css" : {},
+  "file": {},
   "img" : {},
   "js" : {},
   "steam" : null
@@ -209,6 +210,18 @@ steamer.css.sass = function(inputFile, outputFile) {
   }
   steamer.trees.push(css)
   return this
+};
+
+steamer.file.exists = function(path) {
+  try {
+    fs.statSync(path).isFile()
+    return true
+  } catch (e) {
+    if (e.code !== 'ENOENT') {
+      throw e
+    }
+    return false
+  }
 };
 
 /**
