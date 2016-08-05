@@ -308,23 +308,31 @@ steamer.js.compile = function(inputFile, outputFile, options) {
     while (cont) {
       cont = false
       // Float headers to the top
-      matches = result.match(/,?steamer.header\(\s*([\"'])((?:\\\1|.)*?)\1\s*\),?/)
+      matches = result.match(/[,}]?steamer.header\(\s*([\"'])((?:\\\1|.)*?)\1\s*\),?/)
       if (matches) {
         remove = matches[0]
-        if (remove.charAt(0) == remove.substr(-1) && remove.charAt(0) == ',') {
+        if (remove.charAt(0) == '}') {
+          remove = remove.substr(1);
+        }
+        else if (remove.charAt(0) == remove.substr(-1) && remove.charAt(0) == ',') {
           remove = remove.substr(1)
         }
         result = matches[2] + result.replace(remove, "")
+        // console.log("Extracted header: " + matches[2]);
         cont = true
       }
       // Sink footers to the bottom
-      matches = result.match(/,?steamer.footer\(\s*([\"'])((?:\\\1|.)*?)\1\s*\),?/)
+      matches = result.match(/[,}]?steamer.footer\(\s*([\"'])((?:\\\1|.)*?)\1\s*\),?/)
       if (matches) {
         remove = matches[0]
-        if (remove.charAt(0) == remove.substr(-1) && remove.charAt(0) == ',') {
+        if (remove.charAt(0) == '}') {
+          remove = remove.substr(1);
+        }
+        else if (remove.charAt(0) == remove.substr(-1) && remove.charAt(0) == ',') {
           remove = remove.substr(1)
         }
         result = result.replace(remove, "") + matches[2]
+        // console.log("Extracted footer: " + matches[2]);
         cont = true
       }
     }
