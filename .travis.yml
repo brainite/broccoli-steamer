@@ -1,3 +1,7 @@
 language: node_js
 sudo: false
 
+# 0.10.48 receives unavoidable error "SyntaxError: Use of const in strict mode."
+node_js:
+  - 4
+  - 7
