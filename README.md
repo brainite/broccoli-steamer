@@ -1,6 +1,6 @@
 # broccoli-steamer
 
-[![Build Status](https://travis-ci.org/cpnporg/broccoli-steamer.svg?branch=master)](https://travis-ci.org/wittiws/quipxml)
+[![Build Status](https://travis-ci.org/brainite/broccoli-steamer.svg?branch=master)](https://travis-ci.org/brainite/broccoli-steamer)
 
 # Non-steamer examples
 
