@@ -1,4 +1,10 @@
+---
+title: broccoli-steamer
+---
+
 # broccoli-steamer
+
+This project provides utility functions to configure broccoli with less code.
 
 [![Build Status](https://travis-ci.org/brainite/broccoli-steamer.svg?branch=master)](https://travis-ci.org/brainite/broccoli-steamer)
 
