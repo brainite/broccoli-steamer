@@ -16,7 +16,7 @@
     "author":"Greg Payne <gpayne@cpnp.org>",
     "license":"MIT",
     "dependencies":{
-        "broccoli":">=0.10.0",
+        "broccoli":">=0.10.0 < 2.0.0",
         "broccoli-filter":"^1.2.0",
         "broccoli-cli":"^0.0.1",
         "broccoli-more-css":"^0.1.0",
